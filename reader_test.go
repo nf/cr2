@@ -52,14 +52,14 @@ func openSampleFile(t *testing.T) (io.ReadCloser, error) {
 	}
 	t.Logf("Fetching sample file...")
 	fi, err := os.Stat("testdata")
+	if err == nil && !fi.IsDir() {
+		return nil, errors.New("testdata is not a directory")
+	}
 	if os.IsNotExist(err) {
 		err = os.Mkdir("testdata", 0777)
 	}
 	if err != nil {
 		return nil, err
-	}
-	if !fi.IsDir() {
-		return nil, errors.New("testdata is not a directory")
 	}
 	r, err := http.Get(sampleFileURL)
 	if err != nil {
