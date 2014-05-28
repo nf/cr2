@@ -304,12 +304,13 @@ func DecodeConfig(r io.Reader) (image.Config, error) {
 	return d.config, nil
 }
 
-// Decode reads a TIFF image from r and returns it as an image.Image.
-// The type of Image returned depends on the contents of the TIFF.
-func Decode(r io.Reader) (img image.Image, err error) {
+// NewReader returns an io.Reader to the JPEG thumbnail embedded in the CR2
+// image in r.  This allows access to the raw bytes of the JPEG thumbnail
+// without the need to decompress it first.
+func NewReader(r io.Reader) (io.Reader, error) {
 	d, err := newDecoder(r)
 	if err != nil {
-		return
+		return nil, err
 	}
 	offset := int64(d.features[tStripOffsets][0])
 	n := int64(d.features[tStripByteCounts][0])
@@ -318,11 +319,18 @@ func Decode(r io.Reader) (img image.Image, err error) {
 	default:
 		return nil, UnsupportedError("compression")
 	}
-	m, err2 := jpeg.Decode(io.NewSectionReader(d.r, offset, n))
-	if err2 != nil {
+
+	return io.NewSectionReader(d.r, offset, n), nil
+}
+
+// Decode reads a CR2 image from r and returns the embedded JPEG thumbnail as
+// an image.Image.
+func Decode(r io.Reader) (image.Image, error) {
+	r, err := NewReader(r)
+	if err != nil {
 		return nil, err
 	}
-	return m, nil
+	return jpeg.Decode(r)
 }
 
 func init() {
